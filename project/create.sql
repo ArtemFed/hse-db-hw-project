@@ -29,20 +29,23 @@ CREATE TABLE accounts
     account_status VARCHAR(30)  NOT NULL DEFAULT 'active', -- active / inactive
     PRIMARY KEY (id)
 );
+CREATE INDEX index_accounts_email ON accounts (email);
 
 CREATE TABLE employees
 (
     id             BIGSERIAL,
     account_id     BIGINT       NOT NULL UNIQUE,
-    working_status VARCHAR(30)  NOT NULL, -- working / on_vacation / on_business_trip
+    working_status VARCHAR(30)  NOT NULL,   -- working / on_vacation / on_business_trip
     first_name     VARCHAR(100) NOT NULL,
     second_name    VARCHAR(100) NOT NULL,
     third_name     VARCHAR(100) NOT NULL,
-    email          VARCHAR(100) NOT NULL UNIQUE,
     phone_number   INT          NOT NULL UNIQUE,
+    extra_info     JSONB        NOT NULL,   -- Любая информация
     PRIMARY KEY (id),
     FOREIGN KEY (account_id) REFERENCES accounts (id)
 );
+CREATE INDEX index_employees_account_id ON employees (account_id);
+CREATE INDEX index_employees_phone_number ON employees (phone_number);
 
 CREATE TABLE accesses
 (
@@ -51,6 +54,7 @@ CREATE TABLE accesses
     description TEXT        NOT NULL,
     PRIMARY KEY (id)
 );
+CREATE INDEX index_accesses_name ON accesses (name);
 
 CREATE TABLE accounts_accesses
 (
@@ -68,11 +72,12 @@ CREATE TABLE customers
     second_name  VARCHAR(100) NOT NULL,
     third_name   VARCHAR(100) NOT NULL,
     email        VARCHAR(100) NOT NULL,
-    phone_number INT          NOT NULL,
+    phone_number INT          NOT NULL UNIQUE ,
     company      VARCHAR(255) DEFAULT NULL,
     extra_info   JSONB, -- Любая информация о заказчике (ссылки, номера, почты)
     PRIMARY KEY (id)
 );
+CREATE INDEX index_customers_phone_number ON customers (phone_number);
 
 CREATE TABLE specialties -- Специальности (нужны для выполнения заданий)
 (
@@ -80,6 +85,7 @@ CREATE TABLE specialties -- Специальности (нужны для вып
     specialty_name VARCHAR(100) NOT NULL UNIQUE,
     PRIMARY KEY (id)
 );
+CREATE INDEX index_specialties_specialty_name ON specialties (specialty_name);
 
 CREATE TABLE employees_specialties
 (
@@ -93,25 +99,28 @@ CREATE TABLE employees_specialties
 CREATE TABLE operations -- Действия
 (
     id               BIGSERIAL    NOT NULL,
-    operation_name   VARCHAR(100) NOT NULL UNIQUE,
+    name   VARCHAR(100) NOT NULL UNIQUE,
     duration_minutes INT          NOT NULL,
     PRIMARY KEY (id)
 );
+CREATE INDEX index_operations_name ON operations (name);
 
 CREATE TABLE materials
 (
     id            BIGSERIAL    NOT NULL,
-    material_name VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL UNIQUE,
     unit          VARCHAR(50)  NOT NULL,
     PRIMARY KEY (id)
 );
+CREATE INDEX index_materials_name ON materials (name);
 
 CREATE TABLE machines
 (
     id           BIGSERIAL    NOT NULL,
-    machine_name VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL UNIQUE,
     PRIMARY KEY (id)
 );
+CREATE INDEX index_machines_name ON machines (name);
 
 CREATE TABLE operations_materials
 (
@@ -154,6 +163,20 @@ CREATE TABLE orders
     FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE,
     FOREIGN KEY (line_manager_id) REFERENCES employees (id) ON DELETE CASCADE
 );
+ALTER TABLE orders
+    ADD COLUMN fulltext_document tsvector
+        GENERATED ALWAYS AS (
+            to_tsvector('russian'::regconfig,
+                        order_name
+                            || ' ' || description
+                            || ' ' || status
+            )) STORED;
+
+CREATE INDEX index_order_status ON orders USING GIN (status);
+CREATE INDEX index_orders_customer_id ON orders (customer_id);
+CREATE INDEX index_orders_line_manager_id ON orders (line_manager_id);
+CREATE INDEX index_fulltext_document ON orders USING GIN (fulltext_document);
+
 
 CREATE TABLE tasks
 (
@@ -172,7 +195,9 @@ CREATE TABLE tasks
     FOREIGN KEY (executor_id) REFERENCES employees (id) ON DELETE CASCADE,
     FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE
 );
-
+CREATE INDEX index_tasks_operation_id ON tasks (operation_id);
+CREATE INDEX index_tasks_executor_id ON tasks (executor_id);
+CREATE INDEX index_tasks_order_id ON tasks (order_id);
 
 CREATE TABLE orders_tasks
 (
@@ -193,31 +218,6 @@ CREATE TABLE tasks_connections
     FOREIGN KEY (task_slave_id) REFERENCES tasks (id) ON DELETE CASCADE,
     CHECK (task_master_id != task_slave_id)
 );
-
-------------------------------------------------------------------------------------------------
-
-ALTER TABLE orders
-    ADD COLUMN fulltext_document tsvector
-        GENERATED ALWAYS AS (
-            to_tsvector('russian'::regconfig,
-                        order_name
-                            || ' ' || description
-                            || ' ' || status
-            )) STORED;
-
-CREATE INDEX index_employees_account_id ON employees (account_id);
-CREATE INDEX index_accounts_accesses_account_id ON accounts_accesses (account_id);
-
-CREATE INDEX index_order_status ON orders USING GIN (status);
-CREATE INDEX index_orders_customer_id ON orders (customer_id);
-CREATE INDEX index_orders_line_manager_id ON orders (line_manager_id);
-
-CREATE INDEX index_tasks_operation_id ON tasks (operation_id);
-CREATE INDEX index_tasks_executor_id ON tasks (executor_id);
-CREATE INDEX index_tasks_order_id ON tasks (order_id);
-CREATE INDEX index_tasks_status ON tasks USING GIN (status);
-
-CREATE INDEX index_fulltext_document ON orders USING GIN (fulltext_document);
 
 ------------------------------------------------------------------------------------------------------------
 
