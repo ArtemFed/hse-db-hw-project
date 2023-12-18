@@ -21,7 +21,7 @@ DROP TABLE IF EXISTS equipment;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS btree_gin;
 
-CREATE TABLE accounts
+CREATE TABLE accounts -- Аккаунты
 (
     id             BIGSERIAL,
     email          VARCHAR      NOT NULL UNIQUE,
@@ -31,23 +31,23 @@ CREATE TABLE accounts
 );
 CREATE INDEX index_accounts_email ON accounts (email);
 
-CREATE TABLE employees
+CREATE TABLE employees -- Оборудование
 (
     id             BIGSERIAL,
     account_id     BIGINT       NOT NULL UNIQUE,
-    working_status VARCHAR(30)  NOT NULL,   -- working / on_vacation / on_business_trip
+    working_status VARCHAR(30)  NOT NULL, -- working / on_vacation / on_business_trip
     first_name     VARCHAR(100) NOT NULL,
     second_name    VARCHAR(100) NOT NULL,
     third_name     VARCHAR(100) NOT NULL,
     phone_number   INT          NOT NULL UNIQUE,
-    extra_info     JSONB        NOT NULL,   -- Любая информация
+    extra_info     JSONB        NOT NULL, -- Любая информация
     PRIMARY KEY (id),
     FOREIGN KEY (account_id) REFERENCES accounts (id)
 );
 CREATE INDEX index_employees_account_id ON employees (account_id);
 CREATE INDEX index_employees_phone_number ON employees (phone_number);
 
-CREATE TABLE accesses
+CREATE TABLE accesses -- Доступ
 (
     id          BIGSERIAL,
     name        VARCHAR(30) NOT NULL UNIQUE,
@@ -65,14 +65,14 @@ CREATE TABLE accounts_accesses
     FOREIGN KEY (access_id) REFERENCES accesses (id)
 );
 
-CREATE TABLE customers
+CREATE TABLE customers -- Заказчики
 (
     id           BIGSERIAL,
     first_name   VARCHAR(100) NOT NULL,
     second_name  VARCHAR(100) NOT NULL,
     third_name   VARCHAR(100) NOT NULL,
     email        VARCHAR(100) NOT NULL UNIQUE,
-    phone_number INT          NOT NULL UNIQUE ,
+    phone_number INT          NOT NULL UNIQUE,
     company      VARCHAR(255) DEFAULT NULL,
     extra_info   JSONB, -- Любая информация о заказчике (ссылки, номера, почты)
     PRIMARY KEY (id)
@@ -96,27 +96,27 @@ CREATE TABLE employees_specialties
     FOREIGN KEY (specialty_id) REFERENCES specialties (id)
 );
 
-CREATE TABLE operations -- Действия
+CREATE TABLE operations -- Операции
 (
     id               BIGSERIAL    NOT NULL,
-    name   VARCHAR(100) NOT NULL UNIQUE,
+    name             VARCHAR(100) NOT NULL UNIQUE,
     duration_minutes INT          NOT NULL,
     PRIMARY KEY (id)
 );
 CREATE INDEX index_operations_name ON operations (name);
 
-CREATE TABLE materials
+CREATE TABLE materials -- Материалы
 (
-    id            BIGSERIAL    NOT NULL,
+    id   BIGSERIAL    NOT NULL,
     name VARCHAR(100) NOT NULL UNIQUE,
-    unit          VARCHAR(50)  NOT NULL,
+    unit VARCHAR(50)  NOT NULL,
     PRIMARY KEY (id)
 );
 CREATE INDEX index_materials_name ON materials (name);
 
-CREATE TABLE equipments
+CREATE TABLE equipments -- Оборудование
 (
-    id           BIGSERIAL    NOT NULL,
+    id   BIGSERIAL    NOT NULL,
     name VARCHAR(100) NOT NULL UNIQUE,
     PRIMARY KEY (id)
 );
@@ -143,25 +143,25 @@ CREATE TABLE operations_specialties
 CREATE TABLE operations_equipments
 (
     operation_id BIGINT NOT NULL,
-    equipment_id   BIGINT NOT NULL,
+    equipment_id BIGINT NOT NULL,
     PRIMARY KEY (operation_id, equipment_id),
     FOREIGN KEY (operation_id) REFERENCES operations (id) ON DELETE CASCADE,
     FOREIGN KEY (equipment_id) REFERENCES equipments (id) ON DELETE CASCADE
 );
 
-CREATE TABLE orders
+CREATE TABLE orders -- Заказы
 (
     id              BIGSERIAL    NOT NULL,
     order_name      VARCHAR(255) NOT NULL,
     status          VARCHAR(30)  NOT NULL, -- open / in_progress / done / archived / hold /declined
-    customer_id     BIGINT       NOT NULL,
-    line_manager_id BIGINT       NOT NULL,
     description     TEXT         NOT NULL,
+    customer_id     BIGINT,
+    line_manager_id BIGINT,
     begin_at        TIMESTAMP(0) NOT NULL,
     end_at          TIMESTAMP(0) NOT NULL,
     PRIMARY KEY (id),
-    FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE,
-    FOREIGN KEY (line_manager_id) REFERENCES employees (id) ON DELETE CASCADE
+    FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE SET NULL,
+    FOREIGN KEY (line_manager_id) REFERENCES employees (id) ON DELETE SET NULL
 );
 ALTER TABLE orders
     ADD COLUMN fulltext_document tsvector
@@ -178,7 +178,7 @@ CREATE INDEX index_orders_line_manager_id ON orders (line_manager_id);
 CREATE INDEX index_fulltext_document ON orders USING GIN (fulltext_document);
 
 
-CREATE TABLE tasks
+CREATE TABLE tasks -- Задачи
 (
     id           BIGSERIAL    NOT NULL,
     task_name    VARCHAR(255) NOT NULL,
@@ -191,8 +191,8 @@ CREATE TABLE tasks
     end_at       TIMESTAMP(0) NOT NULL,
     order_id     BIGINT       NOT NULL,
     PRIMARY KEY (id),
-    FOREIGN KEY (operation_id) REFERENCES operations (id) ON DELETE CASCADE,
-    FOREIGN KEY (executor_id) REFERENCES employees (id) ON DELETE CASCADE,
+    FOREIGN KEY (operation_id) REFERENCES operations (id) ON DELETE SET NULL,
+    FOREIGN KEY (executor_id) REFERENCES employees (id) ON DELETE SET NULL,
     FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE
 );
 CREATE INDEX index_tasks_operation_id ON tasks (operation_id);
@@ -219,6 +219,21 @@ CREATE TABLE tasks_connections
     CHECK (task_master_id != task_slave_id)
 );
 
+CREATE TABLE orders_requests -- Заявки на заказы
+(
+    id              BIGSERIAL    NOT NULL,
+    order_name      VARCHAR(255) NOT NULL,
+    status          VARCHAR(30)  NOT NULL, -- open / in_progress / done / archived / hold / declined
+    description     TEXT         NOT NULL,
+    customer_id     BIGINT       NOT NULL,
+    line_manager_id BIGINT,
+    begin_at        TIMESTAMP(0) NOT NULL,
+    end_at          TIMESTAMP(0) NOT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE,
+    FOREIGN KEY (line_manager_id) REFERENCES employees (id) ON DELETE SET NULL
+);
+
 ------------------------------------------------------------------------------------------------------------
 
 ALTER TABLE accounts
@@ -227,5 +242,8 @@ ALTER TABLE employees
     ADD CONSTRAINT check_status CHECK (employees.working_status IN ('working', 'on_vacation', 'on_business_trip'));
 ALTER TABLE orders
     ADD CONSTRAINT check_order_status CHECK (status IN ('open', 'in_progress', 'done', 'archived', 'hold', 'declined'));
+ALTER TABLE orders_requests
+    ADD CONSTRAINT check_orders_requests_status CHECK (status IN
+                                                       ('open', 'in_progress', 'done', 'archived', 'hold', 'declined'));
 ALTER TABLE tasks
     ADD CONSTRAINT check_task_status CHECK (status IN ('open', 'in_progress', 'done', 'archived', 'hold', 'declined'));

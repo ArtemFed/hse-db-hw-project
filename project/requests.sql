@@ -57,19 +57,19 @@ WITH tasks_counts AS (SELECT t.executor_id                                      
                       WHERE t.begin_at >= '1999-01-08'
                         AND t.end_at <= '3000-01-08'
                       GROUP BY t.executor_id)
-SELECT e.id AS employee_id,
+SELECT e.id                              AS employee_id,
        e.email,
        e.first_name,
        e.second_name,
        e.third_name,
        e.phone_number,
-       COALESCE(tc.total_tasks, 0) AS total_tasks,
-       COALESCE(tc.tasks_done, 0) AS tasks_done,
+       COALESCE(tc.total_tasks, 0)       AS total_tasks,
+       COALESCE(tc.tasks_done, 0)        AS tasks_done,
        COALESCE(tc.tasks_in_progress, 0) AS tasks_in_progress,
-       COALESCE(tc.tasks_open, 0) AS tasks_open
+       COALESCE(tc.tasks_open, 0)        AS tasks_open
 FROM employees e
-    JOIN accounts a on a.id = e.account_id
-    LEFT JOIN tasks_counts tc ON e.id = tc.employee_id
+         JOIN accounts a on a.id = e.account_id
+         LEFT JOIN tasks_counts tc ON e.id = tc.employee_id
 WHERE a.account_status = 'active';
 
 -- Итоговая цена запроса: 353245.65
@@ -119,7 +119,7 @@ WITH RECURSIVE TaskHierarchy AS (
     SELECT tc.task_master_id, tc.task_slave_id, th.dist + 1
     FROM tasks_connections tc
              INNER JOIN TaskHierarchy th ON tc.task_master_id = th.task_slave_id
-                                                AND connection_type = 'subtask_on')
+        AND connection_type = 'subtask_on')
 -- Result form UNION ALL(R0, R1, R2, R3 ...)
 SELECT task_master_id, dist
 FROM TaskHierarchy
@@ -136,21 +136,23 @@ BEGIN;
 -- Шаг 1: Создание заказа
 INSERT INTO orders (order_name, status, customer_id, line_manager_id, description, begin_at, end_at)
 VALUES ('Новый заказ', 'open', 1, 2, 'Описание заказа', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '7 days')
-RETURNING id INTO @order_id;
+RETURNING id
+INTO @order_id;
 
 -- Шаг 2: Создание трех задач для заказа
 INSERT INTO tasks (task_name, status, description, extra_info, operation_id, executor_id, begin_at, end_at, order_id)
-VALUES
-    ('Задача 1', 'open', 'Описание задачи 1', '{"key": "value1"}', 1, 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '3 days', @order_id),
-    ('Задача 2', 'open', 'Описание задачи 2', '{"key": "value2"}', 2, 4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '5 days', @order_id),
-    ('Задача 3', 'open', 'Описание задачи 3', '{"key": "value3"}', 3, 5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '7 days', @order_id)
-RETURNING id INTO @task1_id, @task2_id, @task3_id;
+VALUES ('Задача 1', 'open', 'Описание задачи 1', '{"key": "value1"}', 1, 3, CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP + INTERVAL '3 days', @order_id),
+       ('Задача 2', 'open', 'Описание задачи 2', '{"key": "value2"}', 2, 4, CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP + INTERVAL '5 days', @order_id),
+       ('Задача 3', 'open', 'Описание задачи 3', '{"key": "value3"}', 3, 5, CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP + INTERVAL '7 days', @order_id)
+RETURNING id
+INTO @task1_id, @task2_id, @task3_id;
 
 -- Шаг 3: Создание связи между задачами
 INSERT INTO tasks_connections (task_master_id, task_slave_id, connection_type)
-VALUES
-    (@task1_id, @task2_id, 'relates_to'),
-    (@task2_id, @task3_id, 'subtask_on');
+VALUES (@task2_id, @task3_id, 'subtask_on');
 
 -- Шаг 4: Завершение транзакции
 COMMIT;
