@@ -66,7 +66,7 @@ VALUES
     ('Staple Operator'),
     ('Painter');
 
-INSERT INTO machines (machine_name)
+INSERT INTO equipments (equipment_name)
 VALUES
     ('Circular Saw'),
     ('Welding Machine'),
@@ -121,7 +121,7 @@ SELECT
 FROM operations o
 LIMIT 10;
 
-INSERT INTO operations_machines (operation_id, machine_id)
+INSERT INTO operations_equipments (operation_id, equipment_id)
 SELECT
     o.id,
     (CASE WHEN o.id % 3 = 0 THEN 1
