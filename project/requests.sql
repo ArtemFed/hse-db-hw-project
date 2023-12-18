@@ -124,3 +124,34 @@ WITH RECURSIVE TaskHierarchy AS (
 SELECT task_master_id, dist
 FROM TaskHierarchy
 ORDER BY dist;
+
+
+-----------------------------------------------------------------------------------------------------------------------
+
+-- Запрос №6:
+
+-- Шаг 0: Стартуем транзакцию
+BEGIN;
+
+-- Шаг 1: Создание заказа
+INSERT INTO orders (order_name, status, customer_id, line_manager_id, description, begin_at, end_at)
+VALUES ('Новый заказ', 'open', 1, 2, 'Описание заказа', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '7 days')
+RETURNING id INTO @order_id;
+
+-- Шаг 2: Создание трех задач для заказа
+INSERT INTO tasks (task_name, status, description, extra_info, operation_id, executor_id, begin_at, end_at, order_id)
+VALUES
+    ('Задача 1', 'open', 'Описание задачи 1', '{"key": "value1"}', 1, 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '3 days', @order_id),
+    ('Задача 2', 'open', 'Описание задачи 2', '{"key": "value2"}', 2, 4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '5 days', @order_id),
+    ('Задача 3', 'open', 'Описание задачи 3', '{"key": "value3"}', 3, 5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '7 days', @order_id)
+RETURNING id INTO @task1_id, @task2_id, @task3_id;
+
+-- Шаг 3: Создание связи между задачами
+INSERT INTO tasks_connections (task_master_id, task_slave_id, connection_type)
+VALUES
+    (@task1_id, @task2_id, 'relates_to'),
+    (@task2_id, @task3_id, 'subtask_on');
+
+-- Шаг 4: Завершение транзакции
+COMMIT;
+

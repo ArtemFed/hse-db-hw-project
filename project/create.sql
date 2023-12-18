@@ -1,7 +1,7 @@
 DROP TABLE IF EXISTS employees_specialties;
 DROP TABLE IF EXISTS operations_specialties;
 DROP TABLE IF EXISTS operations_materials;
-DROP TABLE IF EXISTS operations_machines;
+DROP TABLE IF EXISTS operations_equipments;
 DROP TABLE IF EXISTS accounts_accesses;
 DROP TABLE IF EXISTS tasks_connections;
 DROP TABLE IF EXISTS orders_tasks;
@@ -16,7 +16,7 @@ DROP TABLE IF EXISTS accesses;
 DROP TABLE IF EXISTS customers;
 DROP TABLE IF EXISTS specialties;
 DROP TABLE IF EXISTS materials;
-DROP TABLE IF EXISTS machines;
+DROP TABLE IF EXISTS equipment;
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS btree_gin;
@@ -71,7 +71,7 @@ CREATE TABLE customers
     first_name   VARCHAR(100) NOT NULL,
     second_name  VARCHAR(100) NOT NULL,
     third_name   VARCHAR(100) NOT NULL,
-    email        VARCHAR(100) NOT NULL,
+    email        VARCHAR(100) NOT NULL UNIQUE,
     phone_number INT          NOT NULL UNIQUE ,
     company      VARCHAR(255) DEFAULT NULL,
     extra_info   JSONB, -- Любая информация о заказчике (ссылки, номера, почты)
@@ -114,13 +114,13 @@ CREATE TABLE materials
 );
 CREATE INDEX index_materials_name ON materials (name);
 
-CREATE TABLE machines
+CREATE TABLE equipments
 (
     id           BIGSERIAL    NOT NULL,
     name VARCHAR(100) NOT NULL UNIQUE,
     PRIMARY KEY (id)
 );
-CREATE INDEX index_machines_name ON machines (name);
+CREATE INDEX index_equipments_name ON equipments (name);
 
 CREATE TABLE operations_materials
 (
@@ -140,13 +140,13 @@ CREATE TABLE operations_specialties
     FOREIGN KEY (specialty_id) REFERENCES specialties (id) ON DELETE CASCADE
 );
 
-CREATE TABLE operations_machines
+CREATE TABLE operations_equipments
 (
     operation_id BIGINT NOT NULL,
-    machine_id   BIGINT NOT NULL,
-    PRIMARY KEY (operation_id, machine_id),
+    equipment_id   BIGINT NOT NULL,
+    PRIMARY KEY (operation_id, equipment_id),
     FOREIGN KEY (operation_id) REFERENCES operations (id) ON DELETE CASCADE,
-    FOREIGN KEY (machine_id) REFERENCES machines (id) ON DELETE CASCADE
+    FOREIGN KEY (equipment_id) REFERENCES equipments (id) ON DELETE CASCADE
 );
 
 CREATE TABLE orders
