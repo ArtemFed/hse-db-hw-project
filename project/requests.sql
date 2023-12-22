@@ -58,7 +58,7 @@ WITH tasks_counts AS (SELECT t.executor_id                                      
                         AND t.end_at <= '3000-01-08'
                       GROUP BY t.executor_id)
 SELECT e.id                              AS employee_id,
-       e.email,
+       e.extra_info,
        e.first_name,
        e.second_name,
        e.third_name,
@@ -156,4 +156,3 @@ VALUES (@task2_id, @task3_id, 'subtask_on');
 
 -- Шаг 4: Завершение транзакции
 COMMIT;
-

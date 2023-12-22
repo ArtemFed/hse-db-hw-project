@@ -4,7 +4,7 @@ SELECT 'user' || id || '@example.com',
        CASE WHEN id % 2 = 0 THEN 'active' ELSE 'inactive' END
 FROM generate_series(1, 1000) id;
 
-INSERT INTO employees (account_id, working_status, first_name, second_name, third_name, email, phone_number)
+INSERT INTO employees (account_id, working_status, first_name, second_name, third_name, phone_number, extra_info)
 SELECT id,
        CASE
            WHEN id % 3 = 0 THEN 'working'
@@ -13,8 +13,8 @@ SELECT id,
        'FirstName' || id,
        'LastName' || id,
        'ThirdName' || id,
-       'employee' || id || '@example.com',
-       1234567890 + id
+       1234567890 + id,
+       '{}'
 FROM generate_series(1, 1000) id;
 
 INSERT INTO customers (first_name, second_name, third_name, email, phone_number, company, extra_info)
@@ -27,7 +27,7 @@ SELECT 'CustFirstName' || id,
        '{"info1": "value1", "info2": "value2"}'
 FROM generate_series(1, 1000) id;
 
-INSERT INTO materials (material_name, unit)
+INSERT INTO materials (name, unit)
 VALUES ('Wood Board', 'pieces'),
        ('Metal Frame', 'pieces'),
        ('Fabric Upholstery', 'meters'),
@@ -39,7 +39,7 @@ VALUES ('Wood Board', 'pieces'),
        ('Staples', 'boxes'),
        ('Paint', 'liters');
 
-INSERT INTO operations (operation_name, duration_minutes)
+INSERT INTO operations (name, duration_minutes)
 VALUES ('Cutting Wood Boards', 60),
        ('Welding Metal Frames', 45),
        ('Upholstering with Fabric', 90),
@@ -63,7 +63,7 @@ VALUES ('Carpenter'),
        ('Staple Operator'),
        ('Painter');
 
-INSERT INTO equipments (equipment_name)
+INSERT INTO equipments (name)
 VALUES ('Circular Saw'),
        ('Welding Machine'),
        ('Upholstery Sewing Machine'),
